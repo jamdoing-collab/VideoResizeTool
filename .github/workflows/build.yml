@@ -26,21 +26,25 @@ jobs:
         # Download FFmpeg Windows build
         Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" -OutFile "ffmpeg.zip"
         Expand-Archive -Path "ffmpeg.zip" -DestinationPath "."
-        # Move ffmpeg.exe and ffprobe.exe to project root
-        Get-ChildItem -Path "ffmpeg-*" -Directory | Select-Object -First 1 | ForEach-Object {
-          Copy-Item "$($_.FullName)/bin/ffmpeg.exe" -Destination "."
-          Copy-Item "$($_.FullName)/bin/ffprobe.exe" -Destination "."
-        }
+        dir
+    
+    - name: Setup FFmpeg
+      run: |
+        # Find and copy ffmpeg binaries
+        $ffmpegDir = Get-ChildItem -Path "ffmpeg-*" -Directory | Select-Object -First 1
+        Copy-Item "$($ffmpegDir.FullName)\bin\ffmpeg.exe" -Destination "."
+        Copy-Item "$($ffmpegDir.FullName)\bin\ffprobe.exe" -Destination "."
+        dir *.exe
     
     - name: Build Windows exe
       run: |
-        pyinstaller --clean --windowed video_resize_gui.spec
+        pyinstaller --clean --windowed --add-binary "ffmpeg.exe;." --add-binary "ffprobe.exe;." video_resize_gui.py
     
     - name: Upload Windows exe
       uses: actions/upload-artifact@v4
       with:
         name: Windows
-        path: dist/
+        path: dist/*.exe
         compression-level: 0
 
   build-macos:
@@ -58,6 +62,10 @@ jobs:
       run: |
         pip install py2app
     
+    - name: Install ffmpeg
+      run: |
+        brew install ffmpeg
+    
     - name: Build macOS app
       run: |
         chmod +x build_app.sh
@@ -67,25 +75,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: macOS
-        path: dist/
+        path: dist/*.app
         compression-level: 0
-
-  create-release:
-    needs: [build-windows, build-macos]
-    runs-on: ubuntu-latest
-    if: always() && (needs.build-windows.result == 'success' || needs.build-macos.result == 'success')
-    
-    steps:
-    - name: Download artifacts
-      uses: actions/download-artifact@v4
-      with:
-        path: artifacts/
-        merge-multiple: true
-      
-    - name: Create Release
-      uses: softprops/action-gh-release@v2
-      with:
-        files: artifacts/**
-        generate_release_notes: true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
