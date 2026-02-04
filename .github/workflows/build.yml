@@ -1,0 +1,91 @@
+name: Build Executables
+
+on:
+  release:
+    types: [created]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        pip install pyinstaller pyqt6
+    
+    - name: Download FFmpeg for Windows
+      run: |
+        # Download FFmpeg Windows build
+        Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" -OutFile "ffmpeg.zip"
+        Expand-Archive -Path "ffmpeg.zip" -DestinationPath "."
+        # Move ffmpeg.exe and ffprobe.exe to project root
+        Get-ChildItem -Path "ffmpeg-*" -Directory | Select-Object -First 1 | ForEach-Object {
+          Copy-Item "$($_.FullName)/bin/ffmpeg.exe" -Destination "."
+          Copy-Item "$($_.FullName)/bin/ffprobe.exe" -Destination "."
+        }
+    
+    - name: Build Windows exe
+      run: |
+        pyinstaller --clean --windowed video_resize_gui.spec
+    
+    - name: Upload Windows exe
+      uses: actions/upload-artifact@v4
+      with:
+        name: Windows
+        path: dist/
+        compression-level: 0
+
+  build-macos:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        pip install py2app
+    
+    - name: Build macOS app
+      run: |
+        chmod +x build_app.sh
+        ./build_app.sh
+    
+    - name: Upload macOS app
+      uses: actions/upload-artifact@v4
+      with:
+        name: macOS
+        path: dist/
+        compression-level: 0
+
+  create-release:
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    if: always() && (needs.build-windows.result == 'success' || needs.build-macos.result == 'success')
+    
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts/
+        merge-multiple: true
+      
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: artifacts/**
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
