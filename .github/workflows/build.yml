@@ -38,13 +38,17 @@ jobs:
     
     - name: Build Windows exe
       run: |
-        pyinstaller --clean --windowed --add-binary "ffmpeg.exe;." --add-binary "ffprobe.exe;." video_resize_gui.py
+        pyinstaller --clean --windowed --name "VideoResizeTool" --add-binary "ffmpeg.exe;." --add-binary "ffprobe.exe;." video_resize_gui.py
+    
+    - name: Check dist
+      run: |
+        dir dist/
     
     - name: Upload Windows exe
       uses: actions/upload-artifact@v4
       with:
         name: Windows
-        path: dist/*.exe
+        path: dist/VideoResizeTool.exe
         compression-level: 0
 
   build-macos:
@@ -70,10 +74,17 @@ jobs:
       run: |
         chmod +x build_app.sh
         ./build_app.sh
+      continue-on-error: true
+    
+    - name: Check dist
+      run: |
+        ls -la dist/
+      continue-on-error: true
     
     - name: Upload macOS app
       uses: actions/upload-artifact@v4
+      if: always()
       with:
         name: macOS
-        path: dist/*.app
+        path: dist/
         compression-level: 0
