@@ -31,6 +31,7 @@ jobs:
         $ffmpegDir = Get-ChildItem -Path "ffmpeg-*" -Directory | Select-Object -First 1
         Copy-Item "$($ffmpegDir.FullName)\bin\ffmpeg.exe" -Destination "."
         Copy-Item "$($ffmpegDir.FullName)\bin\ffprobe.exe" -Destination "."
+        dir *.exe
     
     - name: Build Windows exe
       run: |
@@ -38,21 +39,23 @@ jobs:
     
     - name: Check dist contents
       run: |
+        echo "=== Current Directory ==="
+        dir
+        echo "=== Dist Directory ==="
         dir dist/
-        if (Test-Path "dist\VideoResizeTool.exe") {
-          Write-Host "✓ VideoResizeTool.exe found"
-        } else {
-          Write-Host "✗ VideoResizeTool.exe NOT found"
-          dir
+        echo "=== Check if exe exists ==="
+        if (Test-Path "dist\VideoResizeTool.exe") { 
+          echo "Found VideoResizeTool.exe" 
+        } else { 
+          echo "NOT found - listing all files in dist:" 
+          Get-ChildItem -Path "dist" -Recurse
         }
     
     - name: Upload Windows exe
       uses: actions/upload-artifact@v4
       with:
         name: Windows
-        path: |
-          dist/VideoResizeTool.exe
-          dist/*.dll
+        path: dist/
         if-no-files-found: warn
 
   build-macos:
