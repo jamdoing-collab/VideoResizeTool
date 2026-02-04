@@ -71,21 +71,29 @@ jobs:
     
     - name: Install dependencies
       run: |
-        pip install py2app
+        pip install py2app pyqt6
     
     - name: Install ffmpeg
       run: |
         brew install ffmpeg
     
+    - name: Setup FFmpeg
+      run: |
+        cp $(which ffmpeg) ./ffmpeg
+        cp $(which ffprobe) ./ffprobe
+        chmod +x ./ffmpeg ./ffprobe
+    
     - name: Build macOS app
       run: |
-        chmod +x build_app.sh
-        ./build_app.sh
-      continue-on-error: true
+        rm -rf build dist
+        python3 setup.py py2app
+    
+    - name: Check dist
+      run: |
+        ls -la dist/
     
     - name: Upload macOS app
       uses: actions/upload-artifact@v4
-      if: always()
       with:
         name: macOS
         path: dist/
