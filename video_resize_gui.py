@@ -365,9 +365,27 @@ class VideoResizeApp(QMainWindow):
     
     def setup_output_dir(self):
         """Setup default output directory."""
-        desktop = Path.home() / "Desktop"
-        self.output_dir = desktop / "9x16_output"
-        self.output_dir.mkdir(exist_ok=True)
+        try:
+            # Try to get Desktop path
+            if sys.platform == 'win32':
+                # Windows: use USERPROFILE or HOME
+                home = Path(os.path.expanduser('~'))
+            else:
+                home = Path.home()
+            
+            desktop = home / "Desktop"
+            
+            # If Desktop doesn't exist, use home directory
+            if not desktop.exists():
+                desktop = home
+            
+            self.output_dir = desktop / "9x16_output"
+            self.output_dir.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            # Fallback to temp directory
+            import tempfile
+            self.output_dir = Path(tempfile.gettempdir()) / "9x16_output"
+            self.output_dir.mkdir(parents=True, exist_ok=True)
     
     def setup_ui(self):
         self.setWindowTitle("视频转 9:16 工具")
