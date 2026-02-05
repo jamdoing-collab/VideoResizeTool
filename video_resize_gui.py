@@ -10,6 +10,10 @@ import subprocess
 from pathlib import Path
 from typing import List, Optional
 from PyQt6.QtWidgets import (
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+    QLabel, QPushButton, QListWidget, QListWidgetItem, QFileDialog,
+    QProgressBar, QMessageBox, QFrame, QScrollArea
+)
 
 
 def get_subprocess_kwargs():
@@ -19,10 +23,6 @@ def get_subprocess_kwargs():
         # Hide console window on Windows
         kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
     return kwargs
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QPushButton, QListWidget, QListWidgetItem, QFileDialog,
-    QProgressBar, QMessageBox, QFrame, QScrollArea
-)
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
 from PyQt6.QtGui import QFont, QDragEnterEvent, QDropEvent, QColor
 
