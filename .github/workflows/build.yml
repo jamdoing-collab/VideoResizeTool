@@ -39,18 +39,27 @@ jobs:
         .\ffmpeg.exe -i icon.png -vf "scale=256:256" icon.ico
         dir icon.ico
     
-    - name: Build Windows exe
+    - name: Clean and Build Windows exe
       run: |
+        # Clean old builds
+        Remove-Item -Path "dist" -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path "build" -Recurse -Force -ErrorAction SilentlyContinue
+        # Build
         pyinstaller --clean --windowed --name "VideoResizeTool" --icon "icon.ico" --add-binary "ffmpeg.exe;." --add-binary "ffprobe.exe;." video_resize_gui.py
     
-    - name: Check dist contents
+    - name: Check and clean dist
       run: |
-        echo "=== Current Directory ==="
-        dir
-        echo "=== Dist Directory ==="
+        echo "=== Dist Directory before cleaning ==="
         dir dist/
-        echo "=== List all files recursively ==="
-        Get-ChildItem -Path "dist" -Recurse -File | Select-Object -ExpandProperty FullName
+        # Remove any .app folders (should not be here but just in case)
+        if (Test-Path "dist\VideoResizeTool.app") {
+          Remove-Item -Path "dist\VideoResizeTool.app" -Recurse -Force
+          echo "Removed VideoResizeTool.app folder"
+        }
+        # Also remove any other .app folders
+        Get-ChildItem -Path "dist" -Filter "*.app" -Recurse | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+        echo "=== Dist Directory after cleaning ==="
+        dir dist/
     
     - name: Upload Windows exe
       uses: actions/upload-artifact@v4
