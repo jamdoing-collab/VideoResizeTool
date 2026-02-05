@@ -33,9 +33,15 @@ jobs:
         Copy-Item "$($ffmpegDir.FullName)\bin\ffprobe.exe" -Destination "."
         dir *.exe
     
+    - name: Convert icon to ico
+      run: |
+        # Use FFmpeg to convert PNG to ICO
+        .\ffmpeg.exe -i icon.png -vf "scale=256:256" icon.ico
+        dir icon.ico
+    
     - name: Build Windows exe
       run: |
-        pyinstaller --clean --windowed --name "VideoResizeTool" --add-binary "ffmpeg.exe;." --add-binary "ffprobe.exe;." video_resize_gui.py
+        pyinstaller --clean --windowed --name "VideoResizeTool" --icon "icon.ico" --add-binary "ffmpeg.exe;." --add-binary "ffprobe.exe;." video_resize_gui.py
     
     - name: Check dist contents
       run: |
