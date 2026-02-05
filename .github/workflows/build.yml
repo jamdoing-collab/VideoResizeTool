@@ -61,7 +61,9 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: Windows
-        path: dist/
+        path: |
+          dist/VideoResizeTool.exe
+          dist/_internal/
         if-no-files-found: warn
 
   build-macos:
