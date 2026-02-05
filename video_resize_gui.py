@@ -10,6 +10,15 @@ import subprocess
 from pathlib import Path
 from typing import List, Optional
 from PyQt6.QtWidgets import (
+
+
+def get_subprocess_kwargs():
+    """Get subprocess kwargs to hide console window on Windows."""
+    kwargs = {}
+    if sys.platform == 'win32':
+        # Hide console window on Windows
+        kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
+    return kwargs
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QListWidget, QListWidgetItem, QFileDialog,
     QProgressBar, QMessageBox, QFrame, QScrollArea
@@ -128,14 +137,12 @@ class VideoProcessor(QThread):
                 output_path
             ]
             
-            # Run ffmpeg with progress parsing
-            process = subprocess.Popen(
-                cmd, stderr=subprocess.PIPE,
-                stdout=subprocess.DEVNULL,
-                universal_newlines=True,
-                encoding='utf-8',
-                errors='replace'
-            )
+            # Run ffmpeg with progress parsing (hidden console on Windows)
+            popen_kwargs = {'stderr': subprocess.PIPE, 'stdout': subprocess.DEVNULL,
+                          'universal_newlines': True, 'encoding': 'utf-8', 'errors': 'replace'}
+            if sys.platform == 'win32':
+                popen_kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
+            process = subprocess.Popen(cmd, **popen_kwargs)
             
             # Get video duration for progress calculation
             duration = self._get_video_duration(input_path)
@@ -172,7 +179,7 @@ class VideoProcessor(QThread):
                 '-of', 'json',
                 video_path
             ]
-            result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=10)
+            result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=10, **get_subprocess_kwargs())
             if result.returncode != 0:
                 return None
             
@@ -203,7 +210,7 @@ class VideoProcessor(QThread):
                         '-show_entries', 'frame=side_data_list',
                         '-of', 'json', video_path
                     ]
-                    frame_result = subprocess.run(frame_cmd, capture_output=True, text=True, timeout=5)
+                    frame_result = subprocess.run(frame_cmd, capture_output=True, text=True, timeout=5, **get_subprocess_kwargs())
                     if frame_result.returncode == 0:
                         frame_data = json.loads(frame_result.stdout)
                         for frame in frame_data.get('frames', []):
@@ -237,7 +244,7 @@ class VideoProcessor(QThread):
                 '-of', 'default=noprint_wrappers=1:nokey=1',
                 video_path
             ]
-            result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=10)
+            result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=10, **get_subprocess_kwargs())
             return float(result.stdout.strip()) if result.stdout else 0
         except:
             return 0
@@ -621,7 +628,7 @@ class VideoResizeApp(QMainWindow):
         if sys.platform == 'darwin':
             subprocess.run(['open', str(self.output_dir)])
         elif sys.platform == 'win32':
-            subprocess.run(['explorer', str(self.output_dir)])
+            subprocess.run(['explorer', str(self.output_dir)], **get_subprocess_kwargs())
         else:
             subprocess.run(['xdg-open', str(self.output_dir)])
     
@@ -637,7 +644,7 @@ def check_ffmpeg():
     """Check if ffmpeg is installed."""
     try:
         ffmpeg_path, _ = get_ffmpeg_path()
-        subprocess.run([ffmpeg_path, '-version'], capture_output=True, check=True)
+        subprocess.run([ffmpeg_path, '-version'], capture_output=True, check=True, **get_subprocess_kwargs())
         return True
     except:
         return False

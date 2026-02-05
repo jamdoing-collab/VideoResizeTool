@@ -29,6 +29,15 @@ from typing import List, Tuple, Optional
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 
+def get_subprocess_kwargs():
+    """Get subprocess kwargs to hide console window on Windows."""
+    kwargs = {}
+    if sys.platform == 'win32':
+        # Hide console window on Windows
+        kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
+    return kwargs
+
+
 def get_video_info(video_path: str) -> Optional[dict]:
     """Get video dimensions, bitrate, fps, codec info using ffprobe."""
     try:
@@ -40,7 +49,7 @@ def get_video_info(video_path: str) -> Optional[dict]:
             '-of', 'json',
             video_path
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True, **get_subprocess_kwargs())
         data = json.loads(result.stdout)
         stream = data['streams'][0]
         
@@ -80,7 +89,7 @@ def get_video_info(video_path: str) -> Optional[dict]:
                     '-show_entries', 'frame=side_data_list',
                     '-of', 'json', video_path
                 ]
-                frame_result = subprocess.run(frame_cmd, capture_output=True, text=True, timeout=5)
+                frame_result = subprocess.run(frame_cmd, capture_output=True, text=True, timeout=5, **get_subprocess_kwargs())
                 if frame_result.returncode == 0:
                     frame_data = json.loads(frame_result.stdout)
                     for frame in frame_data.get('frames', []):
@@ -296,7 +305,7 @@ def process_video(input_path: str, output_path: str, quiet: bool = False, rotate
         print(f"  FFmpeg command: {' '.join(cmd)}")
     
     try:
-        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+        result = subprocess.run(cmd, check=True, capture_output=True, text=True, **get_subprocess_kwargs())
         
         # Verify output dimensions
         verify_cmd = [
@@ -306,7 +315,7 @@ def process_video(input_path: str, output_path: str, quiet: bool = False, rotate
             '-of', 'csv=s=x:p=0',
             output_path
         ]
-        verify_result = subprocess.run(verify_cmd, capture_output=True, text=True)
+        verify_result = subprocess.run(verify_cmd, capture_output=True, text=True, **get_subprocess_kwargs())
         if verify_result.returncode == 0:
             dims = verify_result.stdout.strip()
             if not quiet:
