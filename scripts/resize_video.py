@@ -32,9 +32,9 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 def get_video_info(video_path: str) -> Optional[dict]:
     """Get video dimensions, bitrate, fps, codec info using ffprobe."""
     try:
-        # Get raw dimensions without autorotation
+        # Get raw dimensions without autorotation (ensure consistent behavior across platforms)
         cmd = [
-            'ffprobe', '-v', 'error',
+            'ffprobe', '-v', 'error', '-noautorotate',
             '-select_streams', 'v:0',
             '-show_entries', 'stream=width,height,bit_rate,r_frame_rate,pix_fmt,sample_aspect_ratio,side_data_list',
             '-of', 'json',
@@ -75,7 +75,7 @@ def get_video_info(video_path: str) -> Optional[dict]:
         if rotation == 0:
             try:
                 frame_cmd = [
-                    'ffprobe', '-v', 'error', '-select_streams', 'v:0',
+                    'ffprobe', '-v', 'error', '-noautorotate', '-select_streams', 'v:0',
                     '-show_frames', '-read_intervals', '%+#1',
                     '-show_entries', 'frame=side_data_list',
                     '-of', 'json', video_path
@@ -210,8 +210,24 @@ def process_video(input_path: str, output_path: str, quiet: bool = False, rotate
         mode = "fit width" if source_ratio > target_ratio else "fit height"
         print(f"  Scale: {scaled_width}×{scaled_height} → {target_width}×{target_height} ({mode})")
     
-    # Build filter chain
-    filter_complex = f"setsar=1,scale={scaled_width}:{scaled_height}:flags=fast_bilinear,pad={target_width}:{target_height}:{pad_left}:{pad_top}:black,setsar=1"
+    # Build filter chain - apply transpose if video has rotation metadata
+    filter_parts = ["setsar=1"]
+    
+    # Apply transpose filter for rotated videos (since we use -noautorotate in ffprobe)
+    if info['is_rotated'] and rotate == 0:
+        rotation = info['rotation']
+        if rotation in [90, -270]:
+            filter_parts.append("transpose=1")  # 90 degrees clockwise
+        elif rotation in [-90, 270]:
+            filter_parts.append("transpose=2")  # 90 degrees counter-clockwise
+        elif rotation in [180, -180]:
+            filter_parts.append("transpose=1,transpose=1")  # 180 degrees
+    
+    filter_parts.append(f"scale={scaled_width}:{scaled_height}:flags=fast_bilinear")
+    filter_parts.append(f"pad={target_width}:{target_height}:{pad_left}:{pad_top}:black")
+    filter_parts.append("setsar=1")
+    
+    filter_complex = ",".join(filter_parts)
     
     # Configure codec-specific settings
     codec_settings = {
@@ -284,7 +300,7 @@ def process_video(input_path: str, output_path: str, quiet: bool = False, rotate
         
         # Verify output dimensions
         verify_cmd = [
-            'ffprobe', '-v', 'error',
+            'ffprobe', '-v', 'error', '-noautorotate',
             '-select_streams', 'v:0',
             '-show_entries', 'stream=width,height',
             '-of', 'csv=s=x:p=0',
