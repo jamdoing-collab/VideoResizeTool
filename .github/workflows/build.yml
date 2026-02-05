@@ -49,21 +49,14 @@ jobs:
         dir
         echo "=== Dist Directory ==="
         dir dist/
-        echo "=== Check if exe exists ==="
-        if (Test-Path "dist\VideoResizeTool.exe") { 
-          echo "Found VideoResizeTool.exe" 
-        } else { 
-          echo "NOT found - listing all files in dist:" 
-          Get-ChildItem -Path "dist" -Recurse
-        }
+        echo "=== List all files recursively ==="
+        Get-ChildItem -Path "dist" -Recurse -File | Select-Object -ExpandProperty FullName
     
     - name: Upload Windows exe
       uses: actions/upload-artifact@v4
       with:
         name: Windows
-        path: |
-          dist/VideoResizeTool.exe
-          dist/_internal/
+        path: dist/
         if-no-files-found: warn
 
   build-macos:
